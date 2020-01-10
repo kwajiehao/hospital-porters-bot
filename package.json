@@ -1,0 +1,23 @@
+{
+  "name": "hospital-porters-bot",
+  "version": "1.0.0",
+  "description": "A Telegram bot which monitors hospital porter operations",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kwajiehao/hospital-porters-bot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kwajiehao/hospital-porters-bot/issues"
+  },
+  "homepage": "https://github.com/kwajiehao/hospital-porters-bot#readme",
+  "dependencies": {
+    "firebase": "^7.6.2",
+    "node-telegram-bot-api": "^0.40.0"
+  }
+}
