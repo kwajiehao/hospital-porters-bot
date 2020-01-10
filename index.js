@@ -36,12 +36,13 @@ bot.onText(/\/open (.+)/, (msg, match) => {
   }
 });
 
-// use the attribute reply_to_message to find the original message
+// request acknowledgement
 bot.onText(/\/noted (.+)/, (msg, match) => {
   console.log(msg);
   console.log(match);
   const txt = match[1];
   try {
+    // use the attribute reply_to_message to find the original message
     if (msg.reply_to_message) {
       // query for the original message and set status to active
       sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', function(snapshot) {
@@ -50,7 +51,34 @@ bot.onText(/\/noted (.+)/, (msg, match) => {
         msgRef.update({
           status: "Active",
         });
+      });
+    }
+  } catch(err) {
+    console.log(err)
+  }
+});
 
+// request closure
+bot.onText(/\/close (.+)/, async (msg, match) => {
+  console.log(msg);
+  console.log(match);
+  const txt = match[1];
+  try {
+    if (msg.reply_to_message) {
+      // query for the original message and set status to active
+      sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', function(snapshot) {
+        const reqId = snapshot.key;
+        const msgRef = sitesRef.child(reqId);
+        msgRef.update({
+          status: "Closed",
+        });
+
+        // send a message to confirm request closure
+        bot.sendMessage(
+          msg.chat.id, 
+          'Request closed',
+          { reply_to_message_id: msg.reply_to_message.message_id },
+        );
       });
     }
   } catch(err) {
