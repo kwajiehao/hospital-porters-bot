@@ -38,9 +38,7 @@ bot.onText(/\/open (.+)/, (msg, match) => {
 
 // request acknowledgement
 bot.onText(/\/noted (.+)/, (msg, match) => {
-  console.log(msg);
-  console.log(match);
-  const txt = match[1];
+  // const txt = match[1];
   try {
     // use the attribute reply_to_message to find the original message
     if (msg.reply_to_message) {
@@ -81,6 +79,72 @@ bot.onText(/\/close (.+)/, async (msg, match) => {
         );
       });
     }
+  } catch(err) {
+    console.log(err)
+  }
+});
+
+// display all active cases
+bot.onText(/\/active (.+)/, (msg, match) => {
+  // const txt = match[1];
+  try {
+    // query for all active cases
+    sitesRef
+      .orderByChild('status')
+      .startAt('Active')
+      .endAt('Active')
+      .on('child_added', function(snapshot) {
+        console.log(snapshot.val())
+    });
+  } catch(err) {
+    console.log(err)
+  }
+});
+
+// display all pending cases
+bot.onText(/\/pending (.+)/, (msg, match) => {
+  // const txt = match[1];
+  try {
+    // query for all pending cases
+    sitesRef
+      .orderByChild('status')
+      .startAt('pending')
+      .endAt('pending')
+      .on('child_added', function(snapshot) {
+        console.log(snapshot.val())
+    });
+  } catch(err) {
+    console.log(err)
+  }
+});
+
+// display all closed cases
+bot.onText(/\/closed (.+)/, async (msg, match) => {
+  // const txt = match[1];
+  try {
+    // query for all closed cases
+    const abc = await sitesRef
+      .orderByChild('status')
+      .startAt('Closed')
+      .endAt('Closed')
+      .once('value');
+
+    // display all closed cases
+    bot.sendMessage(
+      msg.chat.id, 
+      'The following cases have been closed:'
+    );
+
+    // array of closed cases
+    const closedCases = Object.values(abc.val());
+    // forward all messages referring to closed cases
+    closedCases.forEach((req) => {
+      bot.sendMessage(
+        msg.chat.id,
+        'test',
+        { reply_to_message_id: req.messageId },
+      )
+    });
   } catch(err) {
     console.log(err)
   }
