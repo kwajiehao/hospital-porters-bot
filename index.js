@@ -2,19 +2,19 @@ const TelegramBot = require('node-telegram-bot-api');
 const firebase = require('firebase');
 
 const token = process.env.TOKEN;
-const bot = new TelegramBot(token, {polling: true});
+const bot = new TelegramBot(token, { polling: true });
 
 const app = firebase.initializeApp({
   apiKey: process.env.API_KEY,
   authDomain: process.env.AUTH_DOMAIN,
   databaseURL: process.env.databaseURL,
   projectId: process.env.projectId,
-  storageBucket: process.env.storageBucket,  
+  storageBucket: process.env.storageBucket,
   messagingSenderId: process.env.messagingSenderId,
 });
 
 const ref = firebase.database().ref();
-const sitesRef = ref.child("sites");
+const sitesRef = ref.child('sites');
 
 bot.onText(/\/open (.+)/, (msg, match) => {
   console.log(msg);
@@ -32,8 +32,8 @@ bot.onText(/\/open (.+)/, (msg, match) => {
         status: 'pending',
       });
     }
-  } catch(err) {
-    console.log(err)
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -44,16 +44,16 @@ bot.onText(/\/noted (.+)/, (msg, match) => {
     // use the attribute reply_to_message to find the original message
     if (msg.reply_to_message) {
       // query for the original message and set status to active
-      sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', function(snapshot) {
+      sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', (snapshot) => {
         const originalMsg = snapshot.key;
         const msgRef = sitesRef.child(originalMsg);
         msgRef.update({
-          status: "Active",
+          status: 'Active',
         });
       });
     }
-  } catch(err) {
-    console.log(err)
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -65,23 +65,23 @@ bot.onText(/\/close (.+)/, async (msg, match) => {
   try {
     if (msg.reply_to_message) {
       // query for the original message and set status to active
-      sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', function(snapshot) {
+      sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', (snapshot) => {
         const reqId = snapshot.key;
         const msgRef = sitesRef.child(reqId);
         msgRef.update({
-          status: "Closed",
+          status: 'Closed',
         });
 
         // send a message to confirm request closure
         bot.sendMessage(
-          msg.chat.id, 
+          msg.chat.id,
           'Request closed',
           { reply_to_message_id: msg.reply_to_message.message_id },
         );
       });
     }
-  } catch(err) {
-    console.log(err)
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -94,11 +94,11 @@ bot.onText(/\/active (.+)/, (msg, match) => {
       .orderByChild('status')
       .startAt('Active')
       .endAt('Active')
-      .on('child_added', function(snapshot) {
-        console.log(snapshot.val())
-    });
-  } catch(err) {
-    console.log(err)
+      .on('child_added', (snapshot) => {
+        console.log(snapshot.val());
+      });
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -111,11 +111,11 @@ bot.onText(/\/pending (.+)/, (msg, match) => {
       .orderByChild('status')
       .startAt('pending')
       .endAt('pending')
-      .on('child_added', function(snapshot) {
-        console.log(snapshot.val())
-    });
-  } catch(err) {
-    console.log(err)
+      .on('child_added', (snapshot) => {
+        console.log(snapshot.val());
+      });
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -138,22 +138,22 @@ bot.onText(/\/closed (.+)/, async (msg, match) => {
       if (req.chatId) {
         return req.chatId === msg.chat.id;
       }
-    })
+    });
 
     // forward all messages referring to closed cases
     filteredClosedReqs.forEach((req, idx) => {
-      idx === 0 ?  bot.sendMessage(
-        msg.chat.id, 
-        'The following cases have been closed:'
+      idx === 0 ? bot.sendMessage(
+        msg.chat.id,
+        'The following cases have been closed:',
       ) : null;
 
       bot.sendMessage(
         msg.chat.id,
         'test',
         { reply_to_message_id: req.messageId },
-      )
+      );
     });
-  } catch(err) {
-    console.log(err)
+  } catch (err) {
+    console.log(err);
   }
 });
