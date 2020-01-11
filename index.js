@@ -26,6 +26,7 @@ bot.onText(/\/open (.+)/, (msg, match) => {
         userId: msg.from.id,
         username: msg.from.username,
         messageId: msg.message_id,
+        chatId: msg.chat.id,
         description: txt,
         date: msg.date,
         status: 'pending',
@@ -129,16 +130,23 @@ bot.onText(/\/closed (.+)/, async (msg, match) => {
       .endAt('Closed')
       .once('value');
 
-    // display all closed cases
-    bot.sendMessage(
-      msg.chat.id, 
-      'The following cases have been closed:'
-    );
-
     // array of closed cases
-    const closedCases = Object.values(abc.val());
+    const closedReqs = Object.values(abc.val());
+
+    // filter for requests coming from this chat
+    const filteredClosedReqs = closedReqs.filter((req) => {
+      if (req.chatId) {
+        return req.chatId === msg.chat.id;
+      }
+    })
+
     // forward all messages referring to closed cases
-    closedCases.forEach((req) => {
+    filteredClosedReqs.forEach((req, idx) => {
+      idx === 0 ?  bot.sendMessage(
+        msg.chat.id, 
+        'The following cases have been closed:'
+      ) : null;
+
       bot.sendMessage(
         msg.chat.id,
         'test',
