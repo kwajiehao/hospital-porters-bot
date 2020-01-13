@@ -28,4 +28,4 @@ Currently, to accept a request, porters often reply to the original message with
 To close a request, porters often reply to the original message with "Done". With the bot, they just need to reply to the original message with `/done` instead.
 
 ### To-do
-- Currently, Telegram does not accept slash commands without input text (for example, a message of `/close` or `/close  ` would not be accepted but a message of `/close a` would
+- Currently, Telegram does not accept slash commands without input text (for example, a message of `/noted` or `/noted  ` would not be accepted but a message of `/noted a` would
