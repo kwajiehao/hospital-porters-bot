@@ -26,3 +26,6 @@ The message id is used to map a particular request to a specific message since a
 Currently, to accept a request, porters often reply to the original message with a short message "Noted". With the Telegram bot, they should reply to the message with `/noted`. The bot will change the status of the request from 'pending' to 'active'. This section works by utilizing the `reply_to_message` attribute in the payload to find the original request.
 
 To close a request, porters often reply to the original message with "Done". With the bot, they just need to reply to the original message with `/done` instead.
+
+### To-do
+- Currently, Telegram does not accept slash commands without input text (for example, a message of `/close` or `/close  ` would not be accepted but a message of `/close a` would
