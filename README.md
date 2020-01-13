@@ -9,6 +9,7 @@ Setup notes:
 To make a request, a porter can type in his/her usual text. The only change they would need to make is to add `/open` before their message.
 
 Before: wheelchair in aisle 3
+
 After: `/open` wheelchair in aisle 3
 
 The bot will take this message as a signal to open a request. It will store the following fields:
