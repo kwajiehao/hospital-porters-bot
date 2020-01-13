@@ -15,6 +15,7 @@ After: /open wheelchair in aisle 3
 
 The bot will take this message as a signal to open a request. It will store the following fields:
 - `message_id`
+- chatId
 - userId
 - username
 - date
