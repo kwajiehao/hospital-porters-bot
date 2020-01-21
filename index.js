@@ -1,6 +1,7 @@
 // imports
 const TelegramBot = require('node-telegram-bot-api');
 const firebase = require('firebase');
+const Bluebird = require('bluebird');
 
 // internal imports
 const { getTimestamp } = require('./utils');
@@ -149,13 +150,13 @@ bot.onText(/\/active(.*)/, async (msg, match) => {
     const activeReqs = Object.values(activeReqsObj.val());
 
     // forward all messages referring to closed cases
-    activeReqs.forEach((req, idx) => {
-      idx === 0 ? bot.sendMessage(
+    Bluebird.each(activeReqs, async (req, idx) => {
+      idx === 0 ? await bot.sendMessage(
         msg.chat.id,
         'The following cases are active:',
       ) : null;
 
-      bot.sendMessage(
+      await bot.sendMessage(
         msg.chat.id,
         `Active case ${idx}`,
         { reply_to_message_id: req.messageId },
@@ -183,13 +184,13 @@ bot.onText(/\/pending(.*)/, async (msg, match) => {
       const pendingReqs = Object.values(pendingReqsObj.val());
 
       // forward all messages referring to closed cases
-      pendingReqs.forEach((req, idx) => {
-        idx === 0 ? bot.sendMessage(
+      Bluebird.each(pendingReqs, async (req, idx) => {
+        idx === 0 ? await bot.sendMessage(
           msg.chat.id,
           'The following cases are pending:',
         ) : null;
 
-        bot.sendMessage(
+        await bot.sendMessage(
           msg.chat.id,
           `Pending case ${idx}`,
           { reply_to_message_id: req.messageId },
@@ -258,13 +259,13 @@ bot.onText(/\/casesClosedToday(.*)/, async (msg, match) => {
       const todayReqs = Object.values(todayReqsObj.val());
 
       // forward all messages referring to closed cases
-      todayReqs.forEach((req, idx) => {
-        idx === 0 ? bot.sendMessage(
+      Bluebird.each(todayReqs, async (req, idx) => {
+        idx === 0 ? await bot.sendMessage(
           msg.chat.id,
           'The following cases are from today:',
         ) : null;
 
-        bot.sendMessage(
+        await bot.sendMessage(
           msg.chat.id,
           `Case number ${idx} of today`,
           { reply_to_message_id: req.messageId },
