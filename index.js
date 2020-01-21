@@ -23,13 +23,15 @@ bot.onText(/\/open (.+)/, (msg, match) => {
   try {
     if (msg.text) {
       sitesRef.push().set({
+        chatId: msg.chat.id,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        date: msg.date,
+        description: txt,
+        messageId: msg.message_id,
+        status: 'pending',
+        updatedAt: firebase.database.ServerValue.TIMESTAMP,
         userId: msg.from.id,
         username: msg.from.username,
-        messageId: msg.message_id,
-        chatId: msg.chat.id,
-        description: txt,
-        date: msg.date,
-        status: 'pending',
       });
     }
   } catch (err) {
