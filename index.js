@@ -1,10 +1,14 @@
+// imports
 const TelegramBot = require('node-telegram-bot-api');
 const firebase = require('firebase');
+
+// internal imports
+const { getTimestamp } = require('./utils');
 
 const token = process.env.TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-const app = firebase.initializeApp({
+firebase.initializeApp({
   apiKey: process.env.API_KEY,
   authDomain: process.env.AUTH_DOMAIN,
   databaseURL: process.env.databaseURL,
@@ -16,19 +20,18 @@ const app = firebase.initializeApp({
 const ref = firebase.database().ref();
 const sitesRef = ref.child('sites');
 
-bot.onText(/\/open (.+)/, (msg, match) => {
-  console.log(msg);
-  console.log(match);
-  const txt = match[1];
+// open a request
+bot.onText(/\/open(.*)/, (msg, match) => {
   try {
     if (msg.text) {
       sitesRef.push().set({
         chatId: msg.chat.id,
         createdAt: firebase.database.ServerValue.TIMESTAMP,
         date: msg.date,
-        description: txt,
+        description: match[1].trim(),
+        hasImage: false,
         messageId: msg.message_id,
-        status: 'pending',
+        status: 'Pending',
         updatedAt: firebase.database.ServerValue.TIMESTAMP,
         userId: msg.from.id,
         username: msg.from.username,
@@ -39,9 +42,35 @@ bot.onText(/\/open (.+)/, (msg, match) => {
   }
 });
 
+// if the message has a photo we need to detect it separately
+bot.on('message', (msg) => {
+  try {
+    if (msg.photo) {
+      // match caption to /open slash command
+      const match = msg.caption.match(/\/open(.*)/)
+      if (match) {
+        sitesRef.push().set({
+          chatId: msg.chat.id,
+          createdAt: firebase.database.ServerValue.TIMESTAMP,
+          date: msg.date,
+          description: match[1].trim(),
+          hasImage: true,
+          messageId: msg.message_id,
+          status: 'Pending',
+          updatedAt: firebase.database.ServerValue.TIMESTAMP,
+          userId: msg.from.id,
+          username: msg.from.username,
+        });
+      }
+    }
+  } catch(err) {
+    console.log(err);
+  }
+});
+
+
 // request acknowledgement
-bot.onText(/\/noted (.+)/, (msg, match) => {
-  // const txt = match[1];
+bot.onText(/\/noted(.*)/, (msg, match) => {
   try {
     // use the attribute reply_to_message to find the original message
     if (msg.reply_to_message) {
@@ -49,8 +78,14 @@ bot.onText(/\/noted (.+)/, (msg, match) => {
       sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', (snapshot) => {
         const originalMsg = snapshot.key;
         const msgRef = sitesRef.child(originalMsg);
+
+        // updates with the responder's username
         msgRef.update({
           status: 'Active',
+          responderId: msg.from.id,
+          responderUsername: msg.from.username,
+          notedAt: firebase.database.ServerValue.TIMESTAMP,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP,
         });
       });
     }
@@ -60,26 +95,39 @@ bot.onText(/\/noted (.+)/, (msg, match) => {
 });
 
 // request closure
-bot.onText(/\/close (.+)/, async (msg, match) => {
-  console.log(msg);
-  console.log(match);
-  const txt = match[1];
+bot.onText(/\/close(.*)/, async (msg, match) => {
   try {
     if (msg.reply_to_message) {
       // query for the original message and set status to active
       sitesRef.orderByChild('messageId').equalTo(msg.reply_to_message.message_id).on('child_added', (snapshot) => {
+        const message = snapshot.val();
         const reqId = snapshot.key;
         const msgRef = sitesRef.child(reqId);
-        msgRef.update({
-          status: 'Closed',
-        });
 
-        // send a message to confirm request closure
-        bot.sendMessage(
-          msg.chat.id,
-          'Request closed',
-          { reply_to_message_id: msg.reply_to_message.message_id },
-        );
+        // only update if user created the request or responded to the request
+        if (msg.from.id === message.userId || msg.from.id === message.responderId) {
+          msgRef.update({
+            closedAt: firebase.database.ServerValue.TIMESTAMP,
+            closedBy: msg.from.id,
+            closedByUsername: msg.from.username,
+            status: 'Closed',
+            updatedAt: firebase.database.ServerValue.TIMESTAMP,
+          });
+  
+          // send a message to confirm request closure
+          bot.sendMessage(
+            msg.chat.id,
+            'Request closed',
+            { reply_to_message_id: msg.reply_to_message.message_id },
+          );
+        } else {
+          // send a message to deny request closure
+          bot.sendMessage(
+            msg.chat.id,
+            'Only those involved in the request may close it',
+            { reply_to_message_id: msg.reply_to_message.message_id },
+          );
+        }
       });
     }
   } catch (err) {
@@ -88,52 +136,88 @@ bot.onText(/\/close (.+)/, async (msg, match) => {
 });
 
 // display all active cases
-bot.onText(/\/active (.+)/, (msg, match) => {
-  // const txt = match[1];
+bot.onText(/\/active(.*)/, async (msg, match) => {
   try {
     // query for all active cases
-    sitesRef
+    const activeReqsObj = await sitesRef
       .orderByChild('status')
       .startAt('Active')
       .endAt('Active')
-      .on('child_added', (snapshot) => {
-        console.log(snapshot.val());
-      });
+      .once('value');
+    
+    // array of active cases
+    const activeReqs = Object.values(activeReqsObj.val());
+
+    // forward all messages referring to closed cases
+    activeReqs.forEach((req, idx) => {
+      idx === 0 ? bot.sendMessage(
+        msg.chat.id,
+        'The following cases are active:',
+      ) : null;
+
+      bot.sendMessage(
+        msg.chat.id,
+        `Active case ${idx}`,
+        { reply_to_message_id: req.messageId },
+      );
+    });
+
   } catch (err) {
     console.log(err);
   }
 });
 
 // display all pending cases
-bot.onText(/\/pending (.+)/, (msg, match) => {
+bot.onText(/\/pending(.*)/, async (msg, match) => {
   // const txt = match[1];
   try {
     // query for all pending cases
-    sitesRef
+    const pendingReqsObj = await sitesRef
       .orderByChild('status')
-      .startAt('pending')
-      .endAt('pending')
-      .on('child_added', (snapshot) => {
-        console.log(snapshot.val());
+      .startAt('Pending')
+      .endAt('Pending')
+      .once('value');
+    
+    if (pendingReqsObj.val()) {
+      // array of active cases
+      const pendingReqs = Object.values(pendingReqsObj.val());
+
+      // forward all messages referring to closed cases
+      pendingReqs.forEach((req, idx) => {
+        idx === 0 ? bot.sendMessage(
+          msg.chat.id,
+          'The following cases are pending:',
+        ) : null;
+
+        bot.sendMessage(
+          msg.chat.id,
+          `Pending case ${idx}`,
+          { reply_to_message_id: req.messageId },
+        );
       });
+    } else if (pendingReqsObj.val() === null) {
+      bot.sendMessage(
+        msg.chat.id,
+        'There are no pending cases',
+      );
+    }
   } catch (err) {
     console.log(err);
   }
 });
 
 // display all closed cases
-bot.onText(/\/closed (.+)/, async (msg, match) => {
-  // const txt = match[1];
+bot.onText(/\/closed(.*)/, async (msg, match) => {
   try {
     // query for all closed cases
-    const abc = await sitesRef
+    const closedReqsObj = await sitesRef
       .orderByChild('status')
       .startAt('Closed')
       .endAt('Closed')
       .once('value');
 
     // array of closed cases
-    const closedReqs = Object.values(abc.val());
+    const closedReqs = Object.values(closedReqsObj.val());
 
     // filter for requests coming from this chat
     const filteredClosedReqs = closedReqs.filter((req) => {
@@ -146,7 +230,7 @@ bot.onText(/\/closed (.+)/, async (msg, match) => {
     filteredClosedReqs.forEach((req, idx) => {
       idx === 0 ? bot.sendMessage(
         msg.chat.id,
-        'The following cases have been closed:',
+        'The following cases are closed:',
       ) : null;
 
       bot.sendMessage(
@@ -159,3 +243,44 @@ bot.onText(/\/closed (.+)/, async (msg, match) => {
     console.log(err);
   }
 });
+
+bot.onText(/\/casesClosedToday(.*)/, async (msg, match) => {
+  try {
+    const timestamp = getTimestamp(match[1].trim())
+    // query for all cases starting from today
+    const todayReqsObj = await sitesRef
+      .orderByChild('createdAt')
+      .startAt(timestamp)
+      .once('value');
+
+    if (todayReqsObj.val()) {
+      // array of active cases
+      const todayReqs = Object.values(todayReqsObj.val());
+
+      // forward all messages referring to closed cases
+      todayReqs.forEach((req, idx) => {
+        idx === 0 ? bot.sendMessage(
+          msg.chat.id,
+          'The following cases are from today:',
+        ) : null;
+
+        bot.sendMessage(
+          msg.chat.id,
+          `Case number ${idx} of today`,
+          { reply_to_message_id: req.messageId },
+        );
+      });
+    } else if (todayReqsObj.val() === null) {
+      bot.sendMessage(
+        msg.chat.id,
+        'There are no cases today',
+      );
+    }
+
+  } catch(err) {
+    console.log(err);
+  }
+})
+
+// displays error messages
+bot.on("polling_error", (err) => console.log(err));
