@@ -22,5 +22,8 @@
     "eslint-plugin-import": "^2.20.0",
     "firebase": "^7.6.2",
     "node-telegram-bot-api": "^0.40.0"
+  },
+  "engines": {
+    "node": "10.16.3"
   }
 }
